@@ -16,7 +16,7 @@ def load_data():
     y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
     return X_train, X_test, y_train, y_test
 
-def hyperparameter_tuning(X_train, X_test, y_test):
+def hyperparameter_tuning(model_class,X_train, X_test, y_test):
     # Hyperparameter tuning
     n_estimators = [200, 300, 400, 500]
     max_samples = [0.3, 0.5, 0.7, 1.0]
@@ -30,7 +30,7 @@ def hyperparameter_tuning(X_train, X_test, y_test):
         for ms in max_samples:
             for ct in contamination:
                 for bs in bootstrap:
-                    model = IsolationForest(n_estimators=ne,
+                    model = model_class(n_estimators=ne,
                                             max_samples=ms,
                                             contamination=ct,
                                             bootstrap=bs,
@@ -66,7 +66,7 @@ def hyperparameter_tuning(X_train, X_test, y_test):
     best_params = df_sorted.iloc[0].to_dict()
     exclude = ['precision', 'recall', 'f1_score']
     best_params = {k: v for k, v in best_params.items() if k not in exclude}
-    model = IsolationForest(**best_params, random_state=42)
+    model = model_class(**best_params, random_state=42)
     model.fit(X_train)
 
     # Visualize top hyperparameters by F1-score
@@ -99,13 +99,13 @@ def save_model(model, model_path):
 
 def main(model_class, tune=False, save=False):
     X_train, X_test, y_train, y_test = load_data()
+    if model_class == IsolationForest:
+        model_path = MODELS_DIR / "isolation_forest.joblib"
+    else:
+        model_path = MODELS_DIR / "one_class_svm.joblib"
     if tune:
         model, df_sorted = hyperparameter_tuning(model_class, X_train, X_test, y_test)
     else:
-        if model_class == IsolationForest:
-            model_path = MODELS_DIR / "isolation_forest.joblib"
-        else:
-            model_path = MODELS_DIR / "one_class_svm.joblib"
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
