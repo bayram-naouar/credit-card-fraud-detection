@@ -146,7 +146,7 @@ def main(model_class, tune=False, save=False):
     else:
         model_path = MODELS_DIR / "one_class_svm.joblib"
     if tune:
-        model, df_sorted = hyperparameter_tuning(model_class, X_train, X_test, y_test)
+        model, df_sorted = hyperparameter_tuning(model_class)
         plot_top_n_results(df_sorted, top_n=10)
     else:
         if not os.path.exists(model_path):
