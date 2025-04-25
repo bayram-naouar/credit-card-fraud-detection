@@ -1,11 +1,15 @@
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import IsolationForest
+from sklearn.svm import OneClassSVM
+from tqdm import tqdm
+from itertools import product
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score
 import joblib
 import os
 import matplotlib.pyplot as plt
 import seaborn as sns
+from time import perf_counter
 from config import DATA_PROCESSED_DIR, MODELS_DIR
 
 def load_data():
@@ -16,71 +20,109 @@ def load_data():
     y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
     return X_train, X_test, y_train, y_test
 
-def hyperparameter_tuning(model_class,X_train, X_test, y_test):
-    # Hyperparameter tuning
-    n_estimators = [200, 300, 400, 500]
-    max_samples = [0.3, 0.5, 0.7, 1.0]
-    contamination = [0.0005, 0.001, 0.0015, 0.002]
-    bootstrap = [True, False]
+def hyperparameter_tuning(model_class):
+    """
+    Grid search tuning for IsolationForest and OneClassSVM.
+    Always applies fast tuning for OneClassSVM using a 20% subsample of training data.
+    """
+    # Load processed data
+    X_train, X_test, y_train, y_test = load_data()
 
-    # Initialize results
+    # Define parameter grid
+    if model_class == IsolationForest:
+        param_grid = {
+            "n_estimators": [200, 300, 400, 500],
+            "max_samples": [0.5, 0.7, 1.0],
+            "contamination": [0.0015, 0.002, 0.0025],
+            "bootstrap": [True, False]
+        }
+    elif model_class == OneClassSVM:
+        param_grid = {
+            "kernel": ["rbf", "poly", "sigmoid"],
+            "nu": [0.01, 0.05, 0.1, 0.5],
+            "gamma": ["scale", "auto", 0.01, 0.1, 1.0],
+            "degree": [3, 4, 5]  # Only relevant for 'poly'
+        }
+    else:
+        raise ValueError("Unknown model class provided.")
+
+    # Generate unique parameter combinations
+    param_list = []
+    seen = set()
+    for values in product(*param_grid.values()):
+        combo = dict(zip(param_grid.keys(), values))
+
+        # Remove 'degree' if not using 'poly' kernel
+        if model_class == OneClassSVM and combo.get('kernel') != 'poly':
+            combo.pop('degree', None)
+
+        frozen = frozenset(combo.items())
+        if frozen not in seen:
+            seen.add(frozen)
+            param_list.append(combo)
+
     results = []
-    # Iterate over hyperparameters
-    for ne in n_estimators:
-        for ms in max_samples:
-            for ct in contamination:
-                for bs in bootstrap:
-                    model = model_class(n_estimators=ne,
-                                            max_samples=ms,
-                                            contamination=ct,
-                                            bootstrap=bs,
-                                            random_state=42)
-                    model.fit(X_train)
-                    # Predict
-                    y_pred = model.predict(X_test)
-                    # 1 = Fraud / 0 = Legit
-                    y_pred = [1 if x == -1 else 0 for x in y_pred]
-                    # Evaluate
-                    precision = precision_score(y_test, y_pred, zero_division=0)
-                    recall = recall_score(y_test, y_pred, zero_division=0)
-                    f1 = f1_score(y_test, y_pred, zero_division=0)
-                    # Save results
-                    results.append({
-                        'n_estimators': ne,
-                        'max_samples': ms,
-                        'contamination': ct,
-                        'bootstrap': bs,
-                        'precision': precision,
-                        'recall': recall,
-                        'f1_score': f1
-                    })
 
+    for params in tqdm(param_list, desc="Tuning Progress"):
+        start = perf_counter()
+
+        # Use subsample for fast OCSVM training
+        if model_class == OneClassSVM:
+            sample_size = int(0.2 * len(X_train))
+            X_train_sub = X_train[:sample_size]
+            model = model_class(**params)
+            model.fit(X_train_sub)
+        else:
+            model = model_class(**params, random_state=42)
+            model.fit(X_train)
+
+        # Predict
+        y_pred = model.predict(X_test)
+        y_pred = [1 if x == -1 else 0 for x in y_pred]
+
+        # Evaluate
+        precision = precision_score(y_test, y_pred, zero_division=0)
+        recall = recall_score(y_test, y_pred, zero_division=0)
+        f1 = f1_score(y_test, y_pred, zero_division=0)
+
+        elapsed = perf_counter() - start
+        print(f"\n{elapsed:.2f}s | params: {params} | F1_Score: {f1:.4f}")
+
+        results.append({
+            **params,
+            'precision': precision,
+            'recall': recall,
+            'f1_score': f1
+        })
+
+    # Sort and retrain with best parameters and with full training set
     df_results = pd.DataFrame(results)
-    # Sort by F1-score (or whichever metric you prefer)
-    df_sorted = df_results.sort_values(by='f1_score', ascending=False)
-    # Print top results
-    print("\nTop Hyperparameter Combinations:")
-    print(df_sorted.head(10).to_string(index=False))
+    df_sorted = df_results.sort_values(by="f1_score", ascending=False)
 
-    # Using the best parameters to fit the model
-    best_params = df_sorted.iloc[0].to_dict()
-    exclude = ['precision', 'recall', 'f1_score']
-    best_params = {k: v for k, v in best_params.items() if k not in exclude}
-    model = model_class(**best_params, random_state=42)
-    model.fit(X_train)
-
-    # Visualize top hyperparameters by F1-score
-    top_df = df_sorted.head(10).copy()
-    top_df['label'] = top_df.apply(lambda row: f"{int(row['n_estimators'])} | {row['max_samples']} | {row['contamination']} | {row['bootstrap']}", axis=1)
-    plt.figure(figsize=(12, 6))
-    sns.barplot(data=top_df, x='f1_score', y='label', palette='viridis')
-    plt.xlabel("F1 Score")
-    plt.ylabel("Hyperparameter Combo")
-    plt.title("Top Hyperparameter Combinations by F1 Score")
-    plt.tight_layout()
-    plt.show()
+    best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
+    if model_class == OneClassSVM:
+        model = model_class(**best_params)
+        model.fit(X_train)
+    else:
+        model = model_class(**best_params, random_state=42)
+        model.fit(X_train)
 
     return model, df_sorted
+
+def plot_top_n_results(df_results, metric='f1_score', top_n=10):
+    df_top = df_results.sort_values(by=metric, ascending=False).head(top_n).copy()
+
+    # Create a short string label for each config (excluding metrics)
+    param_cols = [col for col in df_top.columns if col not in ['precision', 'recall', 'f1_score']]
+    df_top['params'] = df_top[param_cols].apply(lambda row: ', '.join(f"{k}={v}" for k, v in row.items()), axis=1)
+
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=df_top, x=metric, y='params', palette='crest')
+    plt.xlabel(metric.upper())
+    plt.ylabel("Hyperparameters")
+    plt.title(f"Top {top_n} Hyperparameter Sets by {metric.upper()}")
+    plt.tight_layout()
+    plt.show()
 
 def evaluate_model(model, X_test, y_test):
     # Predict
@@ -105,6 +147,7 @@ def main(model_class, tune=False, save=False):
         model_path = MODELS_DIR / "one_class_svm.joblib"
     if tune:
         model, df_sorted = hyperparameter_tuning(model_class, X_train, X_test, y_test)
+        plot_top_n_results(df_sorted, top_n=10)
     else:
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at {model_path}")
