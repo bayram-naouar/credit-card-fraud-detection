@@ -4,13 +4,16 @@ from sklearn.ensemble import IsolationForest
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score
 import joblib
 import os
+import matplotlib.pyplot as plt
+import seaborn as sns
+from config import DATA_PROCESSED_DIR, MODELS_DIR
 
-def load_data(data_path):
+def load_data():
     # Load data
-    X_train = np.load(f"{data_path}/X_train.npy")
-    X_test = np.load(f"{data_path}/X_test.npy")
-    y_train = np.load(f"{data_path}/y_train.npy")
-    y_test = np.load(f"{data_path}/y_test.npy")
+    X_train = np.load(f"{DATA_PROCESSED_DIR}/X_train.npy")
+    X_test = np.load(f"{DATA_PROCESSED_DIR}/X_test.npy")
+    y_train = np.load(f"{DATA_PROCESSED_DIR}/y_train.npy")
+    y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
     return X_train, X_test, y_train, y_test
 
 def hyperparameter_tuning(X_train, X_test, y_test):
@@ -19,6 +22,7 @@ def hyperparameter_tuning(X_train, X_test, y_test):
     max_samples = [0.3, 0.5, 0.7, 1.0]
     contamination = [0.0005, 0.001, 0.0015, 0.002]
     bootstrap = [True, False]
+
     # Initialize results
     results = []
     # Iterate over hyperparameters
@@ -50,19 +54,33 @@ def hyperparameter_tuning(X_train, X_test, y_test):
                         'recall': recall,
                         'f1_score': f1
                     })
+
     df_results = pd.DataFrame(results)
     # Sort by F1-score (or whichever metric you prefer)
     df_sorted = df_results.sort_values(by='f1_score', ascending=False)
     # Print top results
     print("\nTop Hyperparameter Combinations:")
     print(df_sorted.head(10).to_string(index=False))
+
     # Using the best parameters to fit the model
     best_params = df_sorted.iloc[0].to_dict()
     exclude = ['precision', 'recall', 'f1_score']
     best_params = {k: v for k, v in best_params.items() if k not in exclude}
     model = IsolationForest(**best_params, random_state=42)
     model.fit(X_train)
-    return model
+
+    # Visualize top hyperparameters by F1-score
+    top_df = df_sorted.head(10).copy()
+    top_df['label'] = top_df.apply(lambda row: f"{int(row['n_estimators'])} | {row['max_samples']} | {row['contamination']} | {row['bootstrap']}", axis=1)
+    plt.figure(figsize=(12, 6))
+    sns.barplot(data=top_df, x='f1_score', y='label', palette='viridis')
+    plt.xlabel("F1 Score")
+    plt.ylabel("Hyperparameter Combo")
+    plt.title("Top Hyperparameter Combinations by F1 Score")
+    plt.tight_layout()
+    plt.show()
+
+    return model, df_sorted
 
 def evaluate_model(model, X_test, y_test):
     # Predict
@@ -80,12 +98,11 @@ def save_model(model, model_path):
     print(f"Model saved to {model_path}")
 
 def main(tune=False, save=False):
-    data_path="data/processed"
-    X_train, X_test, y_train, y_test = load_data(data_path)
+    X_train, X_test, y_train, y_test = load_data()
     if tune:
-        model = hyperparameter_tuning(X_train, X_test, y_test)
+        model, df_sorted = hyperparameter_tuning(X_train, X_test, y_test)
     else:
-        model_path="models/isolation_forest.joblib"
+        model_path = MODELS_DIR / "isolation_forest.joblib"
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
