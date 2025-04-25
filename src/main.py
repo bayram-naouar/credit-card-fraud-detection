@@ -23,7 +23,7 @@ def create_parser():
 # Main
 def main():
     # Parse command line arguments
-    parser = create_parser
+    parser = create_parser()
     args = parser.parse_args()
 
     # Preprocess
