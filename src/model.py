@@ -79,10 +79,10 @@ def save_model(model, model_path):
     joblib.dump(model, model_path)
     print(f"Model saved to {model_path}")
 
-def main(do_tuning=False):
+def main(tune=False, save=False):
     data_path="data/processed"
     X_train, X_test, y_train, y_test = load_data(data_path)
-    if do_tuning:
+    if tune:
         model = hyperparameter_tuning(X_train, X_test, y_test)
     else:
         model_path="models/isolation_forest.joblib"
@@ -90,4 +90,5 @@ def main(do_tuning=False):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
     evaluate_model(model, X_test, y_test)
-    save_model(model, model_path)
+    if save:
+        save_model(model, model_path)
