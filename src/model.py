@@ -97,12 +97,15 @@ def save_model(model, model_path):
     joblib.dump(model, model_path)
     print(f"Model saved to {model_path}")
 
-def main(tune=False, save=False):
+def main(model_class, tune=False, save=False):
     X_train, X_test, y_train, y_test = load_data()
     if tune:
-        model, df_sorted = hyperparameter_tuning(X_train, X_test, y_test)
+        model, df_sorted = hyperparameter_tuning(model_class, X_train, X_test, y_test)
     else:
-        model_path = MODELS_DIR / "isolation_forest.joblib"
+        if model_class == IsolationForest:
+            model_path = MODELS_DIR / "isolation_forest.joblib"
+        else:
+            model_path = MODELS_DIR / "one_class_svm.joblib"
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
