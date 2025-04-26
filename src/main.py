@@ -12,11 +12,12 @@ def create_parser():
     # Main module argument group
     model_group = parser.add_mutually_exclusive_group(required=True)
     model_group.add_argument("--isolation-forest", action="store_true", help="Use Isolation Forest model", default=False)
-    model_group.add_argument("--one-class-svm", action="store_true", help="Use Isolation Forest model", default=False)
+    model_group.add_argument("--one-class-svm", action="store_true", help="Use One Class SVM model", default=False)
 
     # Optional argument group
     parser.add_argument("--tune", action="store_true", help="Run hyperparameter tuning", default=False)
     parser.add_argument("--save", action="store_true", help="Save model", default=False)
+    parser.add_argument("--plot", action="store_true", help="Output best_params if --tune else plot confusion matrix", default=False)
 
     return parser
 
@@ -27,18 +28,21 @@ def main():
     args = parser.parse_args()
 
     # Preprocess
+    print("Loading and preprocessing data...")
     preprocess.preprocess()
 
     # Model
     if args.isolation_forest:
+        print("Using Isolation Forest model...")
         model_class = IsolationForest
     elif args.one_class_svm:
+        print("Using One Class SVM model...")
         model_class = OneClassSVM
     else:
         raise Exception("Please specify a model to use")
     
     # Run
-    model.main(model_class=model_class, tune=args.tune, save=args.save)
+    model.main(model_class=model_class, tune=args.tune, save=args.save, plot=args.plot)
 
 if __name__ == "__main__":
     main()

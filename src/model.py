@@ -4,7 +4,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from tqdm import tqdm
 from itertools import product
-from sklearn.metrics import classification_report, precision_score, recall_score, f1_score
+from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, confusion_matrix
 import joblib
 import os
 import matplotlib.pyplot as plt
@@ -23,10 +23,10 @@ def load_data():
 def hyperparameter_tuning(model_class):
     """
     Grid search tuning for IsolationForest and OneClassSVM.
-    Always applies fast tuning for OneClassSVM using a 20% subsample of training data.
+    Always applies fast tuning for OneClassSVM using a subsample of training data.
     """
     # Load processed data
-    X_train, X_test, y_train, y_test = load_data()
+    X_train, X_test, _, y_test = load_data()
 
     # Define parameter grid
     if model_class == IsolationForest:
@@ -68,7 +68,7 @@ def hyperparameter_tuning(model_class):
 
         # Use subsample for fast OCSVM training
         if model_class == OneClassSVM:
-            sample_size = int(0.2 * len(X_train))
+            sample_size = int(0.25 * len(X_train))
             X_train_sub = X_train[:sample_size]
             model = model_class(**params)
             model.fit(X_train_sub)
@@ -100,6 +100,7 @@ def hyperparameter_tuning(model_class):
     df_sorted = df_results.sort_values(by="f1_score", ascending=False)
 
     best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
+    print("Fitting the model with besst hyperparameters...")
     if model_class == OneClassSVM:
         model = model_class(**best_params)
         model.fit(X_train)
@@ -124,7 +125,7 @@ def plot_top_n_results(df_results, metric='f1_score', top_n=10):
     plt.tight_layout()
     plt.show()
 
-def evaluate_model(model, X_test, y_test):
+def evaluate_model(model, X_test, y_test, plot):
     # Predict
     y_pred = model.predict(X_test)
     # 1 = Fraud / 0 = Legit
@@ -132,6 +133,18 @@ def evaluate_model(model, X_test, y_test):
     # Evaluate
     print("Classification Report:")
     print(classification_report(y_test, y_pred))
+    if plot:
+        plot_confusion_matrix(y_test, y_pred)
+
+# Plot confusion matrix
+def plot_confusion_matrix(y_test, y_pred):
+    cm = confusion_matrix(y_test, y_pred, normalize='true')
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt=".2f", cmap="Blues")
+    plt.xlabel("Predicted")
+    plt.ylabel("Actual")
+    plt.title("Confusion Matrix")
+    plt.show()
 
 def save_model(model, model_path):
     # Save model and create directory if it doesn't exist
@@ -139,19 +152,20 @@ def save_model(model, model_path):
     joblib.dump(model, model_path)
     print(f"Model saved to {model_path}")
 
-def main(model_class, tune=False, save=False):
-    X_train, X_test, y_train, y_test = load_data()
+def main(model_class, tune=False, save=False, plot=False):
     if model_class == IsolationForest:
         model_path = MODELS_DIR / "isolation_forest.joblib"
     else:
         model_path = MODELS_DIR / "one_class_svm.joblib"
     if tune:
         model, df_sorted = hyperparameter_tuning(model_class)
-        plot_top_n_results(df_sorted, top_n=10)
+        if plot:
+            plot_top_n_results(df_sorted, top_n=10)
     else:
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
-    evaluate_model(model, X_test, y_test)
+    _, X_test, _, y_test = load_data()
+    evaluate_model(model, X_test, y_test, plot)
     if save:
         save_model(model, model_path)
