@@ -20,24 +20,16 @@ def load_data():
     y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
     return X_train, X_test, y_train, y_test
 
-def hyperparameter_tuning(model_class):
-    """
-    Grid search tuning for IsolationForest and OneClassSVM.
-    Always applies fast tuning for OneClassSVM using a subsample of training data.
-    """
-    # Load processed data
-    X_train, X_test, _, y_test = load_data()
-
-    # Define parameter grid
+def get_param_grid(model_class):
     if model_class == IsolationForest:
-        param_grid = {
+        return {
             "n_estimators": [200, 300, 400, 500],
             "max_samples": [0.5, 0.7, 1.0],
             "contamination": [0.0015, 0.002, 0.0025],
             "bootstrap": [True, False]
         }
     elif model_class == OneClassSVM:
-        param_grid = {
+        return {
             "kernel": ["rbf", "poly", "sigmoid"],
             "nu": [0.01, 0.05, 0.1, 0.5],
             "gamma": ["scale", "auto", 0.01, 0.1, 1.0],
@@ -45,6 +37,14 @@ def hyperparameter_tuning(model_class):
         }
     else:
         raise ValueError("Unknown model class provided.")
+
+def hyperparameter_tuning(model_class):
+    """
+    Grid search tuning for IsolationForest and OneClassSVM.
+    Always applies fast tuning for OneClassSVM using a subsample of training data.
+    """
+    # Define parameter grid
+    param_grid = get_param_grid(model_class)
 
     # Generate unique parameter combinations
     param_list = []
@@ -61,8 +61,10 @@ def hyperparameter_tuning(model_class):
             seen.add(frozen)
             param_list.append(combo)
 
+    # Load processed data
+    X_train, X_test, _, y_test = load_data()
+    
     results = []
-
     for params in tqdm(param_list, desc="Tuning Progress"):
         start = perf_counter()
 
