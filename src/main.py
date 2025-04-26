@@ -17,7 +17,7 @@ def create_parser():
     # Optional argument group
     parser.add_argument("--tune", action="store_true", help="Run hyperparameter tuning", default=False)
     parser.add_argument("--save", action="store_true", help="Save model", default=False)
-    parser.add_argument("--plot", action="store_true", help="Output best_params if --tune else plot confusion matrix", default=False)
+    parser.add_argument("--plot", action="store_true", help="Output confusion matrix plot and top_10 results if --tune", default=False)
 
     return parser
 
