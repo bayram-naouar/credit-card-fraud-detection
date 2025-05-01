@@ -1,10 +1,12 @@
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
+
 import argparse
 
 import preprocess
 import model
-from config import DATA_RAW, DATA_PROCESSED_DIR
+
+from config import AutoEncoderBuilder
 
 # Parse command line arguments
 def create_parser():
@@ -13,6 +15,7 @@ def create_parser():
     model_group = parser.add_mutually_exclusive_group(required=True)
     model_group.add_argument("--isolation-forest", action="store_true", help="Use Isolation Forest model", default=False)
     model_group.add_argument("--one-class-svm", action="store_true", help="Use One Class SVM model", default=False)
+    model_group.add_argument("--auto-encoder", action="store_true", help="Use AutoEncoder model", default=False)
 
     # Optional argument group
     parser.add_argument("--tune", action="store_true", help="Run hyperparameter tuning", default=False)
@@ -38,6 +41,9 @@ def main():
     elif args.one_class_svm:
         print("Using One Class SVM model...")
         model_class = OneClassSVM
+    elif args.auto_encoder:
+        print("Using AutoEncoder model...")
+        model_class = AutoEncoderBuilder
     else:
         raise Exception("Please specify a model to use")
     

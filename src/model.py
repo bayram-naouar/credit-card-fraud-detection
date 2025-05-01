@@ -1,16 +1,20 @@
 import numpy as np
 import pandas as pd
+
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
+from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, confusion_matrix
+
 from tqdm import tqdm
 from itertools import product
-from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, confusion_matrix
 import joblib
+from time import perf_counter
 import os
+
 import matplotlib.pyplot as plt
 import seaborn as sns
-from time import perf_counter
-from config import DATA_PROCESSED_DIR, MODELS_DIR
+
+from config import DATA_PROCESSED_DIR, MODELS_DIR, AutoEncoderBuilder
 
 def load_data():
     # Load data
@@ -18,7 +22,9 @@ def load_data():
     X_test = np.load(f"{DATA_PROCESSED_DIR}/X_test.npy")
     y_train = np.load(f"{DATA_PROCESSED_DIR}/y_train.npy")
     y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
-    return X_train, X_test, y_train, y_test
+    X_legit = np.load(f"{DATA_PROCESSED_DIR}/X_legit.npy")
+    X_fraud = np.load(f"{DATA_PROCESSED_DIR}/X_fraud.npy")
+    return X_train, X_test, y_train, y_test, X_legit, X_fraud
 
 def get_param_grid(model_class):
     if model_class == IsolationForest:
@@ -34,6 +40,15 @@ def get_param_grid(model_class):
             "nu": [0.01, 0.05, 0.1, 0.5],
             "gamma": ["scale", "auto", 0.01, 0.1, 1.0],
             "degree": [3, 4, 5]  # Only relevant for 'poly'
+        }
+    elif model_class == AutoEncoderBuilder:
+        return {
+            'latent_dim': [2, 4, 8],
+            'learning_rate': [0.001, 0.005, 0.01],
+            'loss': ['mse', 'mae'],
+            'epochs': [10, 20, 30],
+            'batch_size': [32, 64, 128],
+            'percentile': [95, 97, 99]
         }
     else:
         raise ValueError("Unknown model class provided.")
@@ -62,7 +77,7 @@ def hyperparameter_tuning(model_class):
             param_list.append(combo)
 
     # Load processed data
-    X_train, X_test, _, y_test = load_data()
+    X_train, X_test, _, y_test, X_legit, _ = load_data()
     
     results = []
     for params in tqdm(param_list, desc="Tuning Progress"):
@@ -74,13 +89,29 @@ def hyperparameter_tuning(model_class):
             X_train_sub = X_train[:sample_size]
             model = model_class(**params)
             model.fit(X_train_sub)
-        else:
+        elif model_class == IsolationForest:
             model = model_class(**params, random_state=42)
             model.fit(X_train)
+        # AutoEncoder trains only on legit transactions
+        elif model_class == AutoEncoderBuilder:
+            model_builder = model_class(**params)
+            model = model_builder()
+            model.fit(X_legit, X_legit,
+                      epochs=model_builder.epochs,
+                      batch_size=model_builder.batch_size,
+                      validation_split=0.2)
 
         # Predict
-        y_pred = model.predict(X_test)
-        y_pred = [1 if x == -1 else 0 for x in y_pred]
+        if model_class == OneClassSVM or model_class == IsolationForest:
+            y_pred = model.predict(X_test)
+            y_pred = [1 if x == -1 else 0 for x in y_pred]
+        elif model_class == AutoEncoderBuilder:
+            reconstruction = model.predict(X_test)
+            reconstruction_error = ((reconstruction - X_test) ** 2).mean(axis=1)
+            threshold = np.percentile(reconstruction_error, model_builder.percentile)
+            y_pred = (reconstruction_error > threshold).astype(int)
+        else:
+            raise ValueError("Unknown model class provided.")
 
         # Evaluate
         precision = precision_score(y_test, y_pred, zero_division=0)
@@ -106,10 +137,16 @@ def hyperparameter_tuning(model_class):
     if model_class == OneClassSVM:
         model = model_class(**best_params)
         model.fit(X_train)
-    else:
+    elif model_class == IsolationForest:
         model = model_class(**best_params, random_state=42)
         model.fit(X_train)
-
+    elif model_class == AutoEncoderBuilder:
+        model_builder = model_class(**best_params)
+        model = model_builder()
+        model.fit(X_train, X_train,
+                  epochs=model_builder.epochs,
+                  batch_size=model_builder.batch_size,
+                  validation_split=0.2)
     return model, df_sorted
 
 def plot_top_n_results(df_results, metric='f1_score', top_n=10):
@@ -157,8 +194,12 @@ def save_model(model, model_path):
 def main(model_class, tune=False, save=False, plot=False):
     if model_class == IsolationForest:
         model_path = MODELS_DIR / "isolation_forest.joblib"
-    else:
+    elif model_class == OneClassSVM:
         model_path = MODELS_DIR / "one_class_svm.joblib"
+    elif model_class == AutoEncoderBuilder:
+        model_path = MODELS_DIR / "autoencoder.joblib"
+    else:
+        raise ValueError("Unknown model class provided.")
     if tune:
         model, df_sorted = hyperparameter_tuning(model_class)
         if plot:
@@ -168,6 +209,6 @@ def main(model_class, tune=False, save=False, plot=False):
             raise Exception(f"Model not found at {model_path}")
         model = joblib.load(model_path)
     _, X_test, _, y_test = load_data()
-    evaluate_model(model, X_test, y_test, plot)
+    #evaluate_model(model, X_test, y_test, plot)
     if save:
         save_model(model, model_path)

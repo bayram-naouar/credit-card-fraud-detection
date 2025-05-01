@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import StandardScaler
+#from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import os
 from config import DATA_RAW, DATA_PROCESSED_DIR
@@ -9,17 +9,22 @@ def preprocess():
     #Load data
     df = pd.read_csv(DATA_RAW)
     df.drop(["Time"], axis=1, inplace=True)
+    X_legit = df[df["Class"] == 0].to_numpy()
+    X_fraud = df[df["Class"] == 1].to_numpy()
 
     #Seperate features and target
     X = df.drop(["Class"], axis=1)
     y = df["Class"]
 
+    # In this case, the data is already normalized and scaled
+    """
     #Scale features using Standard Scaler
     sc = StandardScaler()
-    X_sc = sc.fit_transform(X)
+    X = sc.fit_transform(X)
+    """
     
     #Split data into train and test sets with stratification
-    X_tr, X_ts, y_tr, y_ts = train_test_split(X_sc, y, test_size=0.2, random_state=42, stratify=y)
+    X_tr, X_ts, y_tr, y_ts = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
     #Save train and test sets
     os.makedirs(DATA_PROCESSED_DIR, exist_ok=True)
@@ -27,3 +32,5 @@ def preprocess():
     np.save(f"{DATA_PROCESSED_DIR}/X_test.npy", X_ts)
     np.save(f"{DATA_PROCESSED_DIR}/y_train.npy", y_tr)
     np.save(f"{DATA_PROCESSED_DIR}/y_test.npy", y_ts)
+    np.save(f"{DATA_PROCESSED_DIR}/X_legit.npy", X_legit)
+    np.save(f"{DATA_PROCESSED_DIR}/X_fraud.npy", X_fraud)
