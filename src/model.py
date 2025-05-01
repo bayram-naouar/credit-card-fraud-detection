@@ -104,7 +104,7 @@ def hyperparameter_tuning(model_class):
                       epochs=model_builder.epochs,
                       batch_size=model_builder.batch_size,
                       validation_split=0.2,
-                      callables=[EarlyStopping(monitor='loss', patience=5, restore_best_weights=True)])
+                      callable=[EarlyStopping(monitor='loss', patience=5, restore_best_weights=True)])
 
         # Predict
         if model_class == OneClassSVM or model_class == IsolationForest:
