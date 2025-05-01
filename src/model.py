@@ -97,7 +97,7 @@ def hyperparameter_tuning(model_class):
             model.fit(X_train)
         # AutoEncoder trains only on legit transactions
         elif model_class == AutoEncoderBuilder:
-            model_builder = model_class(**params)
+            model_builder = model_class(X_legit.shape[1],**params)
             model = model_builder()
             model.fit(X_legit, X_legit,
                       epochs=model_builder.epochs,
