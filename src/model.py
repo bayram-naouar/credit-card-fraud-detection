@@ -135,7 +135,13 @@ def hyperparameter_tuning(model_class):
 
     # Sort and retrain with best parameters and with full training set
     df_results = pd.DataFrame(results)
-    df_sorted = df_results.sort_values(by="f1_score", ascending=False)
+    df_results = df_results.assign(
+        custom_score=lambda df: (
+            0.5 * df["f1_score"] +
+            0.2 * df["precision"] +
+            0.3 * df["recall"]
+        ))
+    df_sorted = df_results.sort_values(by="custom_score", ascending=False)
 
     best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
     print("Fitting the model with besst hyperparameters...")

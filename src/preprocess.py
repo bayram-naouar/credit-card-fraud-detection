@@ -9,8 +9,10 @@ def preprocess():
     #Load data
     df = pd.read_csv(DATA_RAW)
     df.drop(["Time"], axis=1, inplace=True)
-    X_legit = df[df["Class"] == 0].to_numpy()
-    X_fraud = df[df["Class"] == 1].to_numpy()
+    df_legit = df[df["Class"] == 0]
+    df_fraud = df[df["Class"] == 1]
+    X_legit = df_legit.drop(["Class"], axis=1).to_numpy()
+    X_fraud = df_fraud.drop(["Class"], axis=1).to_numpy()
     #Seperate features and target
     X = df.drop(["Class"], axis=1)
     y = df["Class"]
