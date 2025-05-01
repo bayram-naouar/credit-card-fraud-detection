@@ -1,20 +1,23 @@
 import numpy as np
 import pandas as pd
 
+from keras.models import Sequential, load_model
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, confusion_matrix
 
 from tqdm import tqdm
 from itertools import product
-import joblib
 from time import perf_counter
+
+import joblib
+import json
 import os
+
+from config import DATA_PROCESSED_DIR, MODELS_DIR, PERCENTILE_PATH, AutoEncoderBuilder
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-from config import DATA_PROCESSED_DIR, MODELS_DIR, AutoEncoderBuilder
 
 def load_data(train=True, test=True, legit=True, fraud=False):
     # Load data
@@ -134,6 +137,7 @@ def hyperparameter_tuning(model_class):
 
     best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
     print("Fitting the model with besst hyperparameters...")
+    percentile = None
     if model_class == OneClassSVM:
         model = model_class(**best_params)
         model.fit(X_train)
@@ -147,7 +151,8 @@ def hyperparameter_tuning(model_class):
                   epochs=model_builder.epochs,
                   batch_size=model_builder.batch_size,
                   validation_split=0.2)
-    return model, df_sorted
+        percentile = best_params['percentile']
+    return model, df_sorted, percentile
 
 def plot_top_n_results(df_results, metric='f1_score', top_n=10):
     df_top = df_results.sort_values(by=metric, ascending=False).head(top_n).copy()
@@ -165,7 +170,6 @@ def plot_top_n_results(df_results, metric='f1_score', top_n=10):
     plt.show()
 
 def evaluate_model(model, X_test, y_test, plot, percentile=None):
-    from keras.models import Sequential
     # Predict
     if isinstance(model, IsolationForest) or isinstance(model, OneClassSVM):
         y_pred = model.predict(X_test)
@@ -194,10 +198,15 @@ def plot_confusion_matrix(y_test, y_pred):
     plt.title("Confusion Matrix")
     plt.show()
 
-def save_model(model, model_path):
+def save_model(model, model_path, percentile=None):
     # Save model and create directory if it doesn't exist
     os.makedirs(os.path.dirname(model_path), exist_ok=True)
-    joblib.dump(model, model_path)
+    if isinstance(model, Sequential):
+        model.save(model_path)
+        with open(PERCENTILE_PATH, 'w') as f:
+            json.dump({"percentile": percentile}, f)
+    else:
+        joblib.dump(model, model_path)
     print(f"Model saved to {model_path}")
 
 def main(model_class, tune=False, save=False, plot=False):
@@ -210,14 +219,23 @@ def main(model_class, tune=False, save=False, plot=False):
     else:
         raise ValueError("Unknown model class provided.")
     if tune:
-        model, df_sorted = hyperparameter_tuning(model_class)
+        model, df_sorted, percentile = hyperparameter_tuning(model_class)
         if plot:
             plot_top_n_results(df_sorted, top_n=10)
     else:
+        percentile = None
         if not os.path.exists(model_path):
             raise Exception(f"Model not found at: {model_path}")
-        model = joblib.load(model_path)
+        if isinstance(model_class, Sequential):
+            model = load_model(model_path)
+            if os.path.exists(PERCENTILE_PATH):
+                with open(PERCENTILE_PATH, 'r') as f:
+                    percentile = json.load(f)
+            else:
+                raise Exception(f"Percentile not found at: {PERCENTILE_PATH}")
+        else:
+            model = joblib.load(model_path)
     _, X_test, _, y_test = load_data(train=False, test=True, legit=False, fraud=False)
-    evaluate_model(model, X_test, y_test, plot)
+    evaluate_model(model, X_test, y_test, plot, percentile)
     if save:
-        save_model(model, model_path)
+        save_model(model, model_path, percentile)

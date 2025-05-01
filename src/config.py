@@ -9,6 +9,7 @@ ROOT_DIR = Path(__file__).resolve().parent
 DATA_RAW = ROOT_DIR / '..' /'data' / 'raw' / 'creditcard.csv'
 DATA_PROCESSED_DIR = ROOT_DIR / '..' / 'data' / 'processed'
 MODELS_DIR = ROOT_DIR / '..' / 'models'
+PERCENTILE_PATH = ROOT_DIR / '..' / 'models' / 'percentile.json'
 
 class AutoEncoderBuilder:
     def __init__(self, input_layer_shape, **kwargs):

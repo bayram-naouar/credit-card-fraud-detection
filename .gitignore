@@ -4,6 +4,7 @@ __pycache__/
 *.csv
 *.joblib
 *.h5
+*.json
 .env
 .idea/
 .vscode/
