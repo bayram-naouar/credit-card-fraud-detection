@@ -2,6 +2,8 @@ __pycache__/
 *.pyc
 *.npy
 *.csv
+*.joblib
+*.h5
 .env
 .idea/
 .vscode/

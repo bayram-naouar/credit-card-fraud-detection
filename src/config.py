@@ -21,9 +21,7 @@ class AutoEncoderBuilder:
         self.input_layer_shape = input_layer_shape
     
     def __call__(self):
-        model = Sequential()
         start_dim = 2**int(np.ceil(np.log2(self.input_layer_shape)))
-
         model = Sequential()
         model.add(Input(shape=(self.input_layer_shape,)))
         # Encoder

@@ -11,21 +11,17 @@ def preprocess():
     df.drop(["Time"], axis=1, inplace=True)
     X_legit = df[df["Class"] == 0].to_numpy()
     X_fraud = df[df["Class"] == 1].to_numpy()
-
     #Seperate features and target
     X = df.drop(["Class"], axis=1)
     y = df["Class"]
-
     # In this case, the data is already normalized and scaled
     """
     #Scale features using Standard Scaler
     sc = StandardScaler()
     X = sc.fit_transform(X)
     """
-    
     #Split data into train and test sets with stratification
     X_tr, X_ts, y_tr, y_ts = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
-
     #Save train and test sets
     os.makedirs(DATA_PROCESSED_DIR, exist_ok=True)
     np.save(f"{DATA_PROCESSED_DIR}/X_train.npy", X_tr)

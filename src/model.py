@@ -16,14 +16,14 @@ import seaborn as sns
 
 from config import DATA_PROCESSED_DIR, MODELS_DIR, AutoEncoderBuilder
 
-def load_data():
+def load_data(train=True, test=True, legit=True, fraud=False):
     # Load data
-    X_train = np.load(f"{DATA_PROCESSED_DIR}/X_train.npy")
-    X_test = np.load(f"{DATA_PROCESSED_DIR}/X_test.npy")
-    y_train = np.load(f"{DATA_PROCESSED_DIR}/y_train.npy")
-    y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy")
-    X_legit = np.load(f"{DATA_PROCESSED_DIR}/X_legit.npy")
-    X_fraud = np.load(f"{DATA_PROCESSED_DIR}/X_fraud.npy")
+    X_train = np.load(f"{DATA_PROCESSED_DIR}/X_train.npy") if train else None
+    y_train = np.load(f"{DATA_PROCESSED_DIR}/y_train.npy") if train else None
+    X_test = np.load(f"{DATA_PROCESSED_DIR}/X_test.npy") if test else None
+    y_test = np.load(f"{DATA_PROCESSED_DIR}/y_test.npy") if test else None
+    X_legit = np.load(f"{DATA_PROCESSED_DIR}/X_legit.npy") if legit else None
+    X_fraud = np.load(f"{DATA_PROCESSED_DIR}/X_fraud.npy") if fraud else None
     return X_train, X_test, y_train, y_test, X_legit, X_fraud
 
 def get_param_grid(model_class):
@@ -164,11 +164,20 @@ def plot_top_n_results(df_results, metric='f1_score', top_n=10):
     plt.tight_layout()
     plt.show()
 
-def evaluate_model(model, X_test, y_test, plot):
+def evaluate_model(model, X_test, y_test, plot, percentile=None):
+    from keras.models import Sequential
     # Predict
-    y_pred = model.predict(X_test)
-    # 1 = Fraud / 0 = Legit
-    y_pred = [1 if x == -1 else 0 for x in y_pred]
+    if isinstance(model, IsolationForest) or isinstance(model, OneClassSVM):
+        y_pred = model.predict(X_test)
+        # 1 = Fraud / 0 = Legit
+        y_pred = [1 if x == -1 else 0 for x in y_pred]
+    elif isinstance(model, Sequential):
+        reconstruction = model.predict(X_test)
+        reconstruction_error = ((reconstruction - X_test) ** 2).mean(axis=1)
+        threshold = np.percentile(reconstruction_error, percentile)
+        y_pred = (reconstruction_error > threshold).astype(int)
+    else:
+        raise ValueError("Unknown model class provided.")
     # Evaluate
     print("Classification Report:")
     print(classification_report(y_test, y_pred))
@@ -197,7 +206,7 @@ def main(model_class, tune=False, save=False, plot=False):
     elif model_class == OneClassSVM:
         model_path = MODELS_DIR / "one_class_svm.joblib"
     elif model_class == AutoEncoderBuilder:
-        model_path = MODELS_DIR / "autoencoder.joblib"
+        model_path = MODELS_DIR / "auto_encoder.h5"
     else:
         raise ValueError("Unknown model class provided.")
     if tune:
@@ -206,9 +215,9 @@ def main(model_class, tune=False, save=False, plot=False):
             plot_top_n_results(df_sorted, top_n=10)
     else:
         if not os.path.exists(model_path):
-            raise Exception(f"Model not found at {model_path}")
+            raise Exception(f"Model not found at: {model_path}")
         model = joblib.load(model_path)
-    _, X_test, _, y_test = load_data()
-    #evaluate_model(model, X_test, y_test, plot)
+    _, X_test, _, y_test = load_data(train=False, test=True, legit=False, fraud=False)
+    evaluate_model(model, X_test, y_test, plot)
     if save:
         save_model(model, model_path)
