@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 
 from keras.models import Sequential, load_model
+from keras.callbacks import EarlyStopping
 from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 from sklearn.metrics import classification_report, precision_score, recall_score, f1_score, confusion_matrix
@@ -102,7 +103,8 @@ def hyperparameter_tuning(model_class):
             model.fit(X_legit, X_legit,
                       epochs=model_builder.epochs,
                       batch_size=model_builder.batch_size,
-                      validation_split=0.2)
+                      validation_split=0.2,
+                      callables=[EarlyStopping(monitor='loss', patience=5, restore_best_weights=True)])
 
         # Predict
         if model_class == OneClassSVM or model_class == IsolationForest:
