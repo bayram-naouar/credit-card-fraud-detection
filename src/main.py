@@ -2,6 +2,7 @@ from sklearn.ensemble import IsolationForest
 from sklearn.svm import OneClassSVM
 
 import argparse
+import sys
 
 import preprocess
 import model
@@ -29,6 +30,19 @@ def main():
     # Parse command line arguments
     parser = create_parser()
     args = parser.parse_args()
+
+    if args.save and not args.tune:
+        raise Exception("Cannot save model without hyperparameter tuning")
+    
+    if args.tune and not args.save:
+        try:
+            resp = input("You're tuning a model but not saving it. Continue? [y/N]: ").strip().lower()
+            if resp != "y":
+                print("Aborted...")
+                sys.exit(0)
+        except (KeyboardInterrupt, EOFError):
+            print("\nAborted...")
+            sys.exit(0)
 
     # Preprocess
     print("Loading and preprocessing data...")
