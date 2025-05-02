@@ -78,7 +78,7 @@ Correlation matrix
 
 Feature-wise behavior across fraud and legit classes
 
-You can view the full EDA notebook here: notebooks/eda_creditcard.ipynb
+[View assets folder](./assets/)
 
 ## 💪 Models
 
@@ -124,6 +124,8 @@ The following metrics are used to evaluate the models:
 **F1 Score**: The harmonic mean of precision and recall.  
 **Custom Score**: A custom score calculated as following: 0.5 * F1_Score + 0.3 * Recall + 0.2 * Precision  
 The model with the best custom score is selected based on hyperparameter tuning.
+
+[View assets folder for examples of output plots](./assets/)
 
 ## 🗒️ Note
 
