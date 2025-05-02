@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-#from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 import os
 from config import DATA_RAW, DATA_PROCESSED_DIR
@@ -16,12 +16,11 @@ def preprocess():
     #Seperate features and target
     X = df.drop(["Class"], axis=1)
     y = df["Class"]
-    # In this case, the data is already normalized and scaled
-    """
-    #Scale features using Standard Scaler
+
+    # In this case, we need to scale only "Amount" feature
     sc = StandardScaler()
-    X = sc.fit_transform(X)
-    """
+    X[:, -1] = sc.fit_transform(X[:, -1].reshape(-1, 1)).flatten()
+
     #Split data into train and test sets with stratification
     X_tr, X_ts, y_tr, y_ts = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
     #Save train and test sets
