@@ -33,16 +33,16 @@ def load_data(train=True, test=True, legit=True, fraud=False):
 def get_param_grid(model_class):
     if model_class == IsolationForest:
         return {
-            "n_estimators": [200, 300, 400, 500],
+            "n_estimators": [100, 200, 300],
             "max_samples": [0.5, 0.7, 1.0],
-            "contamination": [0.0015, 0.002, 0.0025],
+            "contamination": [0.001, 0.0015, 0.002],
             "bootstrap": [True, False]
         }
     elif model_class == OneClassSVM:
         return {
             "kernel": ["rbf", "poly", "sigmoid"],
-            "nu": [0.01, 0.05, 0.1, 0.5],
-            "gamma": ["scale", "auto", 0.01, 0.1, 1.0],
+            "nu": [0.001, 0.005, 0.01],
+            "gamma": [1e-5, 1e-4, 1e-3],
             "degree": [3, 4, 5]  # Only relevant for 'poly'
         }
     elif model_class == AutoEncoderBuilder:
