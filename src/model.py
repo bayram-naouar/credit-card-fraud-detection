@@ -59,7 +59,7 @@ def get_param_grid(model_class):
 
 def hyperparameter_tuning(model_class):
     """
-    Grid search tuning for IsolationForest and OneClassSVM.
+    Grid search tuning for IsolationForest, OneClassSVM and AutoEncoder.
     Always applies fast tuning for OneClassSVM using a subsample of training data.
     """
     # Define parameter grid
@@ -124,23 +124,18 @@ def hyperparameter_tuning(model_class):
         f1 = f1_score(y_test, y_pred, zero_division=0)
 
         elapsed = perf_counter() - start
-        print(f"\n{elapsed:.2f}s | params: {params} | F1_Score: {f1:.4f}")
+        print(f"\n{elapsed:.2f}s | params: {params} | Custom_Score: {f1:.4f}")
 
         results.append({
             **params,
             'precision': precision,
             'recall': recall,
-            'f1_score': f1
+            'f1_score': f1,
+            'custom_score': 0.5 * f1 + 0.2 * precision + 0.3 * recall
         })
 
     # Sort and retrain with best parameters and with full training set
     df_results = pd.DataFrame(results)
-    df_results = df_results.assign(
-        custom_score=lambda df: (
-            0.5 * df["f1_score"] +
-            0.2 * df["precision"] +
-            0.3 * df["recall"]
-        ))
     df_sorted = df_results.sort_values(by="custom_score", ascending=False)
 
     best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
@@ -153,7 +148,7 @@ def hyperparameter_tuning(model_class):
         model = model_class(**best_params, random_state=42)
         model.fit(X_train)
     elif model_class == AutoEncoderBuilder:
-        model_builder = model_class(**best_params)
+        model_builder = model_class(X_train.shape[1],**best_params)
         model = model_builder()
         model.fit(X_train, X_train,
                   epochs=model_builder.epochs,
@@ -243,7 +238,7 @@ def main(model_class, tune=False, save=False, plot=False):
                 raise Exception(f"Percentile not found at: {PERCENTILE_PATH}")
         else:
             model = joblib.load(model_path)
-    _, X_test, _, y_test = load_data(train=False, test=True, legit=False, fraud=False)
+    _, X_test, _, y_test, _, _ = load_data(train=False, test=True, legit=False, fraud=False)
     evaluate_model(model, X_test, y_test, plot, percentile)
     if save:
         save_model(model, model_path, percentile)

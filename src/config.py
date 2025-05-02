@@ -28,17 +28,17 @@ class AutoEncoderBuilder:
         # Encoder
         dim = start_dim
         while dim > self.latent_dim:
-            model.add(Dense(dim, activation='relu'))
+            model.add(Dense(dim, kernel_initializer='he_normal', activation='relu'))
             dim //= 2
         # Latent space
-        model.add(Dense(self.latent_dim, activation='relu'))
+        model.add(Dense(self.latent_dim, kernel_initializer='he_normal', activation='relu'))
         # Decoder
         dim = self.latent_dim * 2
         while dim <= start_dim:
-            model.add(Dense(dim, activation='relu'))
+            model.add(Dense(dim, kernel_initializer='he_normal', activation='relu'))
             dim *= 2
         # Output layer
-        model.add(Dense(self.input_layer_shape, activation='linear'))
+        model.add(Dense(self.input_layer_shape, kernel_initializer='glorot_normal', activation='linear'))
         # Compile
         model.compile(optimizer=Adam(learning_rate=self.learning_rate), loss=self.loss)
         return model
