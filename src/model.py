@@ -157,11 +157,11 @@ def hyperparameter_tuning(model_class):
         percentile = best_params['percentile']
     return model, df_sorted, percentile
 
-def plot_top_n_results(df_results, metric='f1_score', top_n=10):
+def plot_top_n_results(df_results, metric='custom_score', top_n=10):
     df_top = df_results.sort_values(by=metric, ascending=False).head(top_n).copy()
 
     # Create a short string label for each config (excluding metrics)
-    param_cols = [col for col in df_top.columns if col not in ['precision', 'recall', 'f1_score']]
+    param_cols = [col for col in df_top.columns if col not in ['precision', 'recall', 'f1_score', 'custom_score']]
     df_top['params'] = df_top[param_cols].apply(lambda row: ', '.join(f"{k}={v}" for k, v in row.items()), axis=1)
 
     plt.figure(figsize=(12, 6))
@@ -170,6 +170,7 @@ def plot_top_n_results(df_results, metric='f1_score', top_n=10):
     plt.ylabel("Hyperparameters")
     plt.title(f"Top {top_n} Hyperparameter Sets by {metric.upper()}")
     plt.tight_layout()
+    plt.savefig(f"../assets/{metric}_top_{top_n}.png")
     plt.show()
 
 def evaluate_model(model, X_test, y_test, plot, percentile=None):
@@ -189,16 +190,17 @@ def evaluate_model(model, X_test, y_test, plot, percentile=None):
     print("Classification Report:")
     print(classification_report(y_test, y_pred))
     if plot:
-        plot_confusion_matrix(y_test, y_pred)
+        plot_confusion_matrix(y_test, y_pred, type(model).__name__)
 
 # Plot confusion matrix
-def plot_confusion_matrix(y_test, y_pred):
+def plot_confusion_matrix(y_test, y_pred, model_name):
     cm = confusion_matrix(y_test, y_pred, normalize='true')
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt=".2f", cmap="Blues")
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
-    plt.title("Confusion Matrix")
+    plt.title(f"Confusion Matrix - {model_name}")
+    plt.savefig("../assets/confusion_matrix_" + model_name.lower() + ".png")
     plt.show()
 
 def save_model(model, model_path, percentile=None):
