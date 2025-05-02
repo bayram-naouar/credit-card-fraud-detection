@@ -15,29 +15,31 @@ This project applies unsupervised machine learning techniques to detect fraudule
 
 ## 📁 Project Structure
 
-credit-card-fraud-detection/\
-├── data/\
-│   ├── processed/\
-│   │   ├── X_fraud.npy\
-│   │   ├── X_legit.npy\
-│   │   ├── X_test.npy\
-│   │   ├── X_train.npy\
-│   │   ├── y_test.npy\
-│   │   └── y_train.npy\
-│   └── raw/\
-│       └── creditcard.csv\
-├── models/\
-│   ├── auto_encoder.h5\
-│   ├── isolation_forest.joblib\
-│   ├── one_class_svm.joblib\
-│   └── percentile.json\
-├── src/\
-│   ├── main.py           # Main entry point with CLI arguments for running the models\
-│   ├── model.py          # Contains model loading, training, and evaluation logic\
-│   ├── preprocess.py     # Data preprocessing and feature extraction\
-│   ├── config.py         # Configuration file for model parameters\
-├── notebooks/\
-│   └── eda_creditcard.ipynb  # Exploratory Data Analysis (EDA) of the dataset
+credit-card-fraud-detection/  
+├── data/  
+│   ├── raw/  
+│   │   └── creditcard.csv  
+│   └── processed/  
+│       ├── X_train.npy  
+│       ├── X_test.npy  
+│       ├── y_train.npy  
+│       ├── y_test.npy  
+│       ├── X_fraud.npy  
+│       └── X_legit.npy  
+├── models/  
+│   ├── auto_encoder.h5  
+│   ├── isolation_forest.joblib  
+│   ├── one_class_svm.joblib  
+│   └── percentile.json  
+├── notebooks/  
+│   └── eda_creditcard.ipynb  
+├── src/
+│   ├── main.py               # CLI entry point  
+│   ├── model.py              # Main model logic  
+│   ├── preprocess.py         # Data preprocessing  
+│   ├── config.py             # Global config paths  
+├── requirements.txt  
+└── README.md  
 
 ## 🔧 Setup
 
