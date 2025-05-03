@@ -15,7 +15,7 @@ import joblib
 import json
 import os
 
-from config import DATA_PROCESSED_DIR, MODELS_DIR, PERCENTILE_PATH, AutoEncoderBuilder
+from config import DATA_PROCESSED_DIR, MODELS_DIR, PERCENTILE_PATH, OUTPUTS_DIR, AutoEncoderBuilder
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -49,10 +49,10 @@ def get_param_grid(model_class):
         return {
             'latent_dim': [2, 4, 8],
             'learning_rate': [0.001, 0.005, 0.01],
-            'loss': ['mse', 'mae'],
-            'epochs': [10, 20, 30],
-            'batch_size': [32, 64, 128],
-            'percentile': [95, 97, 99]
+            'loss': ['mse'],
+            'epochs': [10],
+            'batch_size': [64],
+            'percentile': [99.85, 99.9, 99.95]
         }
     else:
         raise ValueError("Unknown model class provided.")
@@ -82,14 +82,15 @@ def hyperparameter_tuning(model_class):
 
     # Load processed data
     X_train, X_test, _, y_test, X_legit, _ = load_data()
-    
+
+    # Perform hyperparameter tuning
     results = []
     for params in tqdm(param_list, desc="Tuning Progress"):
         start = perf_counter()
 
         # Use subsample for fast OCSVM training
         if model_class == OneClassSVM:
-            sample_size = int(0.25 * len(X_train))
+            sample_size = int(0.33 * len(X_train))
             X_train_sub = X_train[:sample_size]
             model = model_class(**params)
             model.fit(X_train_sub)
@@ -140,8 +141,13 @@ def hyperparameter_tuning(model_class):
 
     best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score', 'custom_score']).to_dict()
     print("Fitting the model with besst hyperparameters...")
+    print(best_params) # best_params
     percentile = None
     if model_class == OneClassSVM:
+        if best_params['kernel'] == 'poly':
+            best_params['degree'] = int(best_params['degree'])
+        else:
+            best_params.pop('degree', None)
         model = model_class(**best_params)
         model.fit(X_train)
     elif model_class == IsolationForest:
@@ -157,20 +163,21 @@ def hyperparameter_tuning(model_class):
         percentile = best_params['percentile']
     return model, df_sorted, percentile
 
-def plot_top_n_results(df_results, metric='custom_score', top_n=10):
+def plot_top_n_results(df_results, model_name, metric='custom_score', top_n=10):
     df_top = df_results.sort_values(by=metric, ascending=False).head(top_n).copy()
 
     # Create a short string label for each config (excluding metrics)
     param_cols = [col for col in df_top.columns if col not in ['precision', 'recall', 'f1_score', 'custom_score']]
     df_top['params'] = df_top[param_cols].apply(lambda row: ', '.join(f"{k}={v}" for k, v in row.items()), axis=1)
 
+    output_path = OUTPUTS_DIR / f"{metric}_top_{top_n}_{model_name}.png"
     plt.figure(figsize=(12, 6))
     sns.barplot(data=df_top, x=metric, y='params', palette='crest')
     plt.xlabel(metric.upper())
     plt.ylabel("Hyperparameters")
-    plt.title(f"Top {top_n} Hyperparameter Sets by {metric.upper()}")
+    plt.title(f"top {top_n} Hyperparameter Sets by {metric.upper()}_{model_name}")
     plt.tight_layout()
-    plt.savefig(f"../assets/{metric}_top_{top_n}.png")
+    plt.savefig(output_path)
     plt.show()
 
 def evaluate_model(model, X_test, y_test, plot, percentile=None):
@@ -194,13 +201,14 @@ def evaluate_model(model, X_test, y_test, plot, percentile=None):
 
 # Plot confusion matrix
 def plot_confusion_matrix(y_test, y_pred, model_name):
+    output_path = OUTPUTS_DIR / f"confusion_matrix_{model_name.lower()}.png"
     cm = confusion_matrix(y_test, y_pred, normalize='true')
     plt.figure(figsize=(8, 6))
     sns.heatmap(cm, annot=True, fmt=".2f", cmap="Blues")
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.title(f"Confusion Matrix - {model_name}")
-    plt.savefig("../assets/confusion_matrix_" + model_name.lower() + ".png")
+    plt.savefig(output_path)
     plt.show()
 
 def save_model(model, model_path, percentile=None):
@@ -226,7 +234,7 @@ def main(model_class, tune=False, save=False, plot=False):
     if tune:
         model, df_sorted, percentile = hyperparameter_tuning(model_class)
         if plot:
-            plot_top_n_results(df_sorted, top_n=10)
+            plot_top_n_results(df_sorted, type(model).__name__, top_n=10)
     else:
         percentile = None
         if not os.path.exists(model_path):
