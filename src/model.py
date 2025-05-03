@@ -138,7 +138,7 @@ def hyperparameter_tuning(model_class):
     df_results = pd.DataFrame(results)
     df_sorted = df_results.sort_values(by="custom_score", ascending=False)
 
-    best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score']).to_dict()
+    best_params = df_sorted.iloc[0].drop(['precision', 'recall', 'f1_score', 'custom_score']).to_dict()
     print("Fitting the model with besst hyperparameters...")
     percentile = None
     if model_class == OneClassSVM:
