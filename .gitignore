@@ -16,6 +16,7 @@ data/raw/*.csv
 data/processed/*.npy
 models/saved/*.pkl
 models/saved/best_params/*.json
+assets/*.png
 
 # Notebooks
 .ipynb_checkpoints/
