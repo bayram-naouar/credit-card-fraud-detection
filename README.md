@@ -60,13 +60,11 @@ streamlit run app.py
 
 Test set: 56,961 transactions, 98 fraudulent (~0.17%). Metrics are reported for the **fraud class** (the negative class is uninformative under this much imbalance).
 
-<!-- TODO: fill in after final run (50 random-search iterations, 30 autoencoder epochs, OCSVM on full / larger subsample) -->
-
 | Model | Precision | Recall | F1 | False positives | False negatives | AUC-PR |
 |-------|----------:|-------:|---:|----------------:|----------------:|-------:|
-| Isolation Forest | — | — | — | — | — | — |
-| One-Class SVM    | — | — | — | — | — | — |
-| Autoencoder      | — | — | — | — | — | — |
+| Isolation Forest | 0.03 | 0.85 | 0.06 | 2,607 | 15 | 0.208 |
+| One-Class SVM    | 0.01 | 0.88 | 0.02 | 6,903 | 12 | 0.093 |
+| Autoencoder      | 0.10 | 0.79 | 0.18 |   693 | 21 | **0.261** |
 
 <details>
 <summary>Confusion matrices (click to expand)</summary>
@@ -81,15 +79,11 @@ Test set: 56,961 transactions, 98 fraudulent (~0.17%). Metrics are reported for 
 
 ### Interpretation
 
-<!-- TODO: write after final run. Likely shape, based on preliminary results:
-     - Autoencoder leads on AUC-PR; production-ready tradeoff between recall and false-positive volume.
-     - OCSVM achieves high recall but with too many false positives to be operationally usable.
-     - Isolation Forest is a middle ground.
-     - Recall-weighted tuning objective pushed all three toward catching fraud; the autoencoder still
-       wins because the reconstruction approach models the legitimate-transaction distribution more
-       faithfully — a stronger model beats a clever loss function. -->
-
 **Headline metric:** AUC-PR (Area Under the Precision-Recall curve). Unlike accuracy or AUC-ROC, AUC-PR is robust to severe class imbalance — it's the metric of choice when the positive class is rare.
+
+The **Autoencoder leads on both AUC-PR and operational cost**: its 693 false positives represent ~1.2% of legitimate test transactions — manageable for a manual-review queue. **Isolation Forest** follows at AUC-PR 0.208 with 2,607 false positives; decent but noisier. **One-Class SVM** reaches the highest raw recall (0.88) but flags 6,903 legitimate transactions as fraudulent (~12% false-positive rate), making it impractical in this configuration.
+
+The recall-weighted tuning objective successfully pushed all three models toward catching fraud. The Autoencoder wins because learning to reconstruct the full distribution of legitimate transactions provides richer signal than fitting a single decision boundary around a sample of normal points.
 
 ---
 
@@ -114,7 +108,7 @@ A `BaseModel` abstract class defines the common interface (`fit`, `predict`, `an
 
 ### Tuning — [src/train.py](src/train.py)
 
-20-iteration random search per model, scored on the validation set with the custom recall-weighted metric. Best parameters and the chosen threshold are persisted to `models/saved/best_params/<model>_best_params.json` for reproducibility.
+50-iteration random search per model, scored on the validation set with the custom recall-weighted metric. Best parameters and the chosen threshold are persisted to `models/saved/best_params/<model>_best_params.json` for reproducibility.
 
 ---
 
@@ -122,7 +116,7 @@ A `BaseModel` abstract class defines the common interface (`fit`, `predict`, `an
 
 **Recall-weighted scoring (0.6 × recall + 0.4 × precision).** In fraud detection, missing real fraud is far more expensive than flagging a clean transaction — at worst, a false positive triggers a manual review. The asymmetric weights bake that cost into the tuning objective directly.
 
-**OneClassSVM uses a 50% training-data subsample for the final fit.** sklearn's `OneClassSVM` has O(n²–n³) fit complexity; fitting on the full ~228k-row training set takes hours and large memory. Tuning uses an even smaller 10% subsample. This is a deliberate scaling tradeoff — at production data sizes the better fix would be `SGDOneClassSVM` or a Nystroem-kernel approximation, not raw OCSVM.
+**OneClassSVM uses a 50% training-data subsample for the final fit.** sklearn's `OneClassSVM` has O(n²–n³) fit complexity; fitting on the full ~228k-row training set takes hours and large memory. Tuning uses a 25% subsample. This is a deliberate scaling tradeoff — at production data sizes the better fix would be `SGDOneClassSVM` or a Nystroem-kernel approximation, not raw OCSVM.
 
 **Threshold frozen at fit time.** `BaseModel.fit()` is a template method: it calls each model's `_fit()`, computes anomaly scores on the training data, and stores the percentile-based threshold once. This means a model's decision boundary is a property of the trained model alone, not of whatever batch you happen to score next.
 
@@ -175,4 +169,4 @@ Python 3.10+ · scikit-learn · PyTorch · pandas · NumPy · Matplotlib · Seab
 
 ## License
 
-<!-- TODO: re-add LICENSE file (MIT recommended) and link here -->
+MIT — see [LICENSE](LICENSE).
