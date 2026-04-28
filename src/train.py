@@ -123,8 +123,8 @@ def train(model_name, tune=False):
 
 
 def main():
-    # train("isolation_forest", True)
-    # train("one_class_svm", True)
+    train("isolation_forest", True)
+    train("one_class_svm", True)
     train("autoencoder", True)
 
 
