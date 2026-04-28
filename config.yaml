@@ -41,7 +41,7 @@ models:
         gamma: auto
 
   autoencoder:
-    epochs: 10
+    epochs: 30
     batch_size: 64
     learning_rate: 0.001
     latent_dim: 8
@@ -49,7 +49,7 @@ models:
 
 # ── Training ──────────────────────────────────────────
 training:
-  random_search_iterations: 20
+  random_search_iterations: 50
   scoring_weights:
     precision: 0.4
     recall: 0.6
