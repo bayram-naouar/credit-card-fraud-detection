@@ -1,0 +1,73 @@
+# ── Paths ──────────────────────────────────────────────
+paths:
+  raw_data: data/raw/creditcard.csv
+  processed_dir: data/processed
+  model_dir: models/saved
+  scaler_path: models/saved/scaler.pkl
+  assets_dir: assets
+  best_params_dir: models/saved/best_params
+
+# ── Preprocessing ─────────────────────────────────────
+preprocessing:
+  test_size: 0.2
+  val_size: 0.2
+  random_state: 42
+  scaler: robust                   # robust or standard
+  columns:
+    time: Time
+    amount: Amount
+    target: Class
+
+# ── Models ────────────────────────────────────────────
+models:
+  isolation_forest:
+    n_estimators: 100
+    contamination: 0.0017          # 0.17% fraud rate from EDA
+    threshold_percentile: 95
+
+  one_class_svm:
+    kernel: rbf
+    nu: 0.01
+    threshold_percentile: 95
+    kernel_params:
+      linear:
+        {}                         # no extra params
+      rbf:
+        gamma: auto
+      poly:
+        gamma: auto
+        degree: 3
+      sigmoid:
+        gamma: auto
+
+  autoencoder:
+    epochs: 10
+    batch_size: 64
+    learning_rate: 0.001
+    latent_dim: 8
+    threshold_percentile: 95
+
+# ── Training ──────────────────────────────────────────
+training:
+  random_search_iterations: 20
+  scoring_weights:
+    precision: 0.4
+    recall: 0.6
+
+# ── Parameter Spaces ──────────────────────
+param_space:
+  isolation_forest:
+    n_estimators: [50, 100, 200, 300, 400]
+    max_features: [0.5, 0.7, 0.8, 1.0]
+    contamination: [0.001, 0.0017, 0.003, 0.005, 0.01]
+    max_samples: [0.5, 0.7, 0.8, 1.0]
+    threshold_percentile: [95, 97, 99, 99.5]
+  one_class_svm:
+    kernel: ["linear", "rbf", "poly", "sigmoid"]
+    nu: [0.001, 0.01, 0.1, 0.5]
+    threshold_percentile: [95, 97, 99, 99.5]
+  autoencoder:
+    latent_dim: [4, 8, 16, 32]
+    learning_rate: [0.0001, 0.001, 0.005]
+    batch_size: [32, 64, 128]
+    threshold_percentile: [95, 97, 99, 99.5]
