@@ -39,7 +39,7 @@ pip install -r requirements.txt
 
 # 2. Place the Kaggle "Credit Card Fraud Detection" dataset (mlg-ulb)
 #    at data/raw/creditcard.csv
-#    <!-- TODO: add Kaggle URL once verified -->
+#    https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud
 
 # 3. Preprocess (stratified split + robust scaling + cyclic time features)
 python -m src.preprocess
@@ -68,8 +68,6 @@ Test set: 56,961 transactions, 98 fraudulent (~0.17%). Metrics are reported for 
 
 <details>
 <summary>Confusion matrices (click to expand)</summary>
-
-<!-- TODO: confirm filenames match what evaluate.py writes -->
 
 ![Isolation Forest](assets/isolation_forest_confusion_matrix.png)
 ![One-Class SVM](assets/one_class_svm_confusion_matrix.png)
