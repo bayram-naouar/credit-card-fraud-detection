@@ -36,6 +36,11 @@ def evaluate(model_name):
     cm_normalized = confusion_matrix(y_test, y_pred, normalize="true")
     print(f"[evaluating] Confusion Matrix for {model_name}:\n")
     print(cm)
+
+    precision, recall, _ = precision_recall_curve(y_test, scores)
+    auc_pr = auc(recall, precision)
+    print(f"[evaluating] AUC-PR for {model_name}: {auc_pr:.3f}")
+
     annot = np.array(
         [
             [f"{cm[i][j]}\n({cm_normalized[i][j] * 100:.1f}%)" for j in range(2)]
@@ -43,7 +48,7 @@ def evaluate(model_name):
         ]
     )
     labels = ["Legitimate", "Fraud"]
-    plt.figure(figsize=(8, 6))
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
     sns.heatmap(
         cm_normalized,
         annot=annot,
@@ -51,24 +56,22 @@ def evaluate(model_name):
         cmap="Blues",
         xticklabels=labels,
         yticklabels=labels,
+        ax=axes[0],
     )
-    plt.title(f"Confusion Matrix - {model_name}")
-    plt.ylabel("True Label")
-    plt.xlabel("Predicted Label")
-    plt.savefig(ROOT / PATHS["assets_dir"] / f"{model_name}_confusion_matrix.png")
-    plt.close()
+    axes[0].set_title("Confusion Matrix")
+    axes[0].set_ylabel("True Label")
+    axes[0].set_xlabel("Predicted Label")
 
-    precision, recall, _ = precision_recall_curve(y_test, scores)
-    auc_pr = auc(recall, precision)
-    print(f"[evaluating] AUC-PR for {model_name}: {auc_pr:.3f}")
-    plt.figure(figsize=(8, 6))
-    plt.plot(recall, precision, label=f"AUC-PR = {auc_pr:.3f}")
-    plt.xlabel("Recall")
-    plt.ylabel("Precision")
-    plt.title(f"Precision-Recall Curve - {model_name}")
-    plt.legend()
-    plt.savefig(ROOT / PATHS["assets_dir"] / f"{model_name}_auc_pr.png")
-    plt.close()
+    axes[1].plot(recall, precision, label=f"AUC-PR = {auc_pr:.3f}")
+    axes[1].set_xlabel("Recall")
+    axes[1].set_ylabel("Precision")
+    axes[1].set_title("Precision-Recall Curve")
+    axes[1].legend()
+
+    fig.suptitle(model_name, fontsize=14, fontweight="bold")
+    fig.tight_layout()
+    fig.savefig(ROOT / PATHS["assets_dir"] / f"{model_name}.png")
+    plt.close(fig)
 
 
 def main():

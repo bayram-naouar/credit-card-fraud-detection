@@ -67,11 +67,11 @@ Test set: 56,961 transactions, 98 fraudulent (~0.17%). Metrics are reported for 
 | Autoencoder      | 0.10 | 0.79 | 0.18 |   693 | 21 | **0.261** |
 
 <details>
-<summary>Confusion matrices (click to expand)</summary>
+<summary>Evaluation plots (click to expand)</summary>
 
-![Isolation Forest](assets/isolation_forest_confusion_matrix.png)
-![One-Class SVM](assets/one_class_svm_confusion_matrix.png)
-![Autoencoder](assets/autoencoder_confusion_matrix.png)
+![Isolation Forest](assets/isolation_forest.png)
+![One-Class SVM](assets/one_class_svm.png)
+![Autoencoder](assets/autoencoder.png)
 
 </details>
 
