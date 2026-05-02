@@ -10,8 +10,7 @@
 
 **Unsupervised anomaly detection for credit-card fraud — Isolation Forest, One-Class SVM, and a PyTorch Autoencoder, tuned with random search against a recall-weighted score and evaluated by AUC-PR.**
 
-<!-- TODO: replace with live Streamlit URL once deployed -->
-[Live demo](#) · [EDA notebook](notebooks/eda.ipynb)
+[Live demo](https://credit-card-fraud-detection-95.streamlit.app/) · [EDA notebook](notebooks/eda.ipynb)
 
 </div>
 
@@ -131,8 +130,8 @@ A `BaseModel` abstract class defines the common interface (`fit`, `predict`, `an
 ├── config.yaml                # Single source of truth: paths, hyperparameters, param spaces
 ├── data/
 │   ├── raw/                   # Source CSV (gitignored)
-│   └── processed/             # NumPy arrays after preprocessing (gitignored)
-├── models/saved/              # Trained models + best params (gitignored)
+│   └── processed/             # NumPy arrays after preprocessing (X_test/y_test committed for demo)
+├── models/saved/              # Trained model artifacts (committed for demo)
 ├── notebooks/
 │   └── eda.ipynb              # Exploratory data analysis
 ├── src/
@@ -146,14 +145,13 @@ A `BaseModel` abstract class defines the common interface (`fit`, `predict`, `an
 │       ├── isolation_forest.py
 │       ├── one_class_svm.py
 │       └── autoencoder.py
-└── app.py                     # Streamlit demo (TODO)
+└── app.py                     # Streamlit threshold playground
 ```
 
 ---
 
 ## What's next
 
-- **Deploy the Streamlit demo** to Streamlit Community Cloud and link it at the top of this README.
 - **Early stopping** for the autoencoder (currently uses fixed epoch count).
 - **Supervised baseline** (LightGBM / XGBoost with class-weighted loss) to quantify the cost of going unsupervised on a problem where labels actually exist.
 - **Structured logging** to replace `print` calls.
